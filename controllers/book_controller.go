@@ -17,18 +17,7 @@ var (
 )
 
 func GetAllBooks(w http.ResponseWriter, r *http.Request) {
-	// statement, err := database.Query(`
-	// 	SELECT
-	// 		b.id,
-	// 		b.title,
-	// 		b.summary,
-	// 		b.publication_date,
-	// 		b.cover_picture,
-	// 		IFNULL(br.rating, 0) AS average_rating,
-	// 		IFNULL(br.rating_count, 0) AS total_ratings
-	// 	FROM books b
-	// 	LEFT JOIN book_ratings br ON b.id = br.book_id
-	// `)
+
 	statement, err := database.Query(`
 		SELECT 
 		b.id AS book_id,
@@ -68,7 +57,6 @@ func GetAllBooks(w http.ResponseWriter, r *http.Request) {
 		var book models.Book
 		var publicationDateStr string
 
-		// Scan query result into book and author struct fields
 		err = statement.Scan(
 			&book.ID,
 			&book.Title,
@@ -90,20 +78,16 @@ func GetAllBooks(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// Parse the publication date into time.Time
 		book.PublicationDate, err = time.Parse("2006-01-02", publicationDateStr)
 		if err != nil {
 			log.Fatal("Failed to parse publication date:", err)
 		}
 
-		// Append the fully populated book (with author) to the books slice
 		books = append(books, book)
 	}
 
 	utils.SendResponse(w, "Books retrieved successfully", "success", books, http.StatusOK)
 
-	// w.WriteHeader(http.StatusOK)
-	// json.NewEncoder(w).Encode(books)
 }
 
 func AddBook(w http.ResponseWriter, r *http.Request) {

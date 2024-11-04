@@ -42,17 +42,16 @@ func Database() *sql.DB {
 		log.Fatal("DB_HOST not set in .env")
 	}
 
-	// credentials := "root:root1234@tcp(localhost:3306)/gotodo"
 	// Format the connection string
-    credentials := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", user, pass, host, dbPort, dbName)
-	fmt.Println(credentials);
+	credentials := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", user, pass, host, dbPort, dbName)
+	fmt.Println(credentials)
 
 	database, err := sql.Open("mysql", credentials)
 
 	if err != nil {
 		logger.Log(err)
 		log.Fatal(err)
-	} 
+	}
 
 	_, err = database.Exec(`CREATE DATABASE IF NOT EXISTS good_reads`)
 
@@ -70,8 +69,6 @@ func Database() *sql.DB {
 		fmt.Println(err)
 	}
 
-	
 	return database
 
 }
-// this is just a test for vim motions
