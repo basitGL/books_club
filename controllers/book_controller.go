@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/basitGL/books_club/config"
 	"github.com/basitGL/books_club/models"
+	"github.com/basitGL/books_club/services"
 	"github.com/basitGL/books_club/utils"
 )
 
@@ -16,7 +18,28 @@ var (
 	database = config.Database()
 )
 
-func GetAllBooks(w http.ResponseWriter, r *http.Request) {
+type RateBookRequestPayload struct {
+	Rating   float32 `json:"rating"`
+	BookID   int     `json:"book_id"`
+	AuthorID int     `json:"author_id"`
+}
+
+type RateBookResponsePayload struct {
+	BookID        int     `json:"book_id"`
+	UpdatedRating float32 `json:"rating"`
+}
+
+type BookController struct {
+	authService *services.AuthService
+}
+
+func NewBookController(authService *services.AuthService) *BookController {
+	return &BookController{
+		authService: authService,
+	}
+}
+
+func (c *BookController) GetAllBooks(w http.ResponseWriter, r *http.Request) {
 
 	statement, err := database.Query(`
 		SELECT 
@@ -90,7 +113,7 @@ func GetAllBooks(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func AddBook(w http.ResponseWriter, r *http.Request) {
+func (c *BookController) AddBook(w http.ResponseWriter, r *http.Request) {
 	title := r.FormValue("title")
 	summary := r.FormValue("summary")
 	publicationDate := r.FormValue("publication_date")
@@ -99,12 +122,12 @@ func AddBook(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Error parsing authorId value: ")
 	}
 
-	file, _, err := r.FormFile("cover_picture")
+	file, handler, err := r.FormFile("cover_picture")
 	if err != nil {
 		fmt.Println("Invalid File:")
 	}
 
-	coverPicture, err := utils.UploadFileToServer(file)
+	coverPicture, err := utils.UploadFileToServer(file, handler, r)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -131,4 +154,46 @@ func AddBook(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Failed to add book:")
 	}
 	utils.SendResponse(w, "", "success", "", http.StatusCreated)
+}
+
+func (c *BookController) RateBook(w http.ResponseWriter, r *http.Request) {
+	var payload RateBookRequestPayload
+	var updatedRating float32
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	tx, err := database.Begin()
+	if err != nil {
+		http.Error(w, "Unable to start transaction", http.StatusInternalServerError)
+		return
+	}
+
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`UPDATE book_ratings SET rating = ((rating * rating_count) + ?) / (rating_count + 1), rating_count = (rating_count + 1) WHERE book_id = ?`, payload.Rating, payload.BookID)
+	if err != nil {
+		http.Error(w, "Unable to update rating", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = tx.Exec(`UPDATE author_ratings SET average_rating = ((average_rating * total_ratings) + ?) / (total_ratings + 1), total_ratings = (total_ratings + 1) WHERE author_id = ?`, payload.Rating, payload.AuthorID)
+	if err != nil {
+		http.Error(w, "Unable to update author rating", http.StatusInternalServerError)
+		return
+	}
+
+	if err = tx.Commit(); err != nil {
+		http.Error(w, "Transaction commit error", http.StatusInternalServerError)
+		return
+	}
+
+	responsePayload := RateBookResponsePayload{
+		BookID:        payload.BookID,
+		UpdatedRating: updatedRating,
+	}
+
+	utils.SendResponse(w, "Rating updated successfully", "success", responsePayload, http.StatusOK)
 }

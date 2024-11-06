@@ -8,13 +8,15 @@ import (
 	"os"
 
 	"github.com/basitGL/books_club/routes"
+	"github.com/basitGL/books_club/services"
 	"github.com/basitGL/books_club/utils"
 	"github.com/ichtrojan/thoth"
 	"github.com/joho/godotenv"
 )
 
+const uploadDir = "./uploads"
 
-func main()  {
+func main() {
 
 	logger, _ := thoth.Init("log")
 
@@ -30,10 +32,14 @@ func main()  {
 		log.Fatal("PORT not set in .env")
 	}
 
-	fmt.Println("Server started at http://localhost:"+port)
-	err:= http.ListenAndServe(":"+port, utils.ContentTypeMiddleware(routes.Init()))
+	authService := services.NewAuthService("your-secret-key")
+	router := routes.NewRouter(authService)
+	r := router.Init()
 
-	if err!=nil {
+	fmt.Println("Server started at http://localhost:" + port)
+	err := http.ListenAndServe(":"+port, utils.ContentTypeMiddleware(r))
+
+	if err != nil {
 		logger.Log(err)
 		log.Fatal(err)
 	}
