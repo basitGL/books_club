@@ -9,12 +9,9 @@ import (
 
 	"github.com/basitGL/books_club/routes"
 	"github.com/basitGL/books_club/services"
-	"github.com/basitGL/books_club/utils"
 	"github.com/ichtrojan/thoth"
 	"github.com/joho/godotenv"
 )
-
-const uploadDir = "./uploads"
 
 func main() {
 
@@ -36,8 +33,13 @@ func main() {
 	router := routes.NewRouter(authService)
 	r := router.Init()
 
+	if err := os.MkdirAll("uploads", 0755); err != nil {
+		log.Fatal(err)
+	}
+
 	fmt.Println("Server started at http://localhost:" + port)
-	err := http.ListenAndServe(":"+port, utils.ContentTypeMiddleware(r))
+	err := http.ListenAndServe(":"+port, r)
+	// err := http.ListenAndServe(":"+port, utils.ContentTypeMiddleware(r))
 
 	if err != nil {
 		logger.Log(err)

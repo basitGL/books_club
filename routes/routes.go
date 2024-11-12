@@ -1,11 +1,15 @@
 package routes
 
 import (
+	"net/http"
+
 	"github.com/basitGL/books_club/controllers"
 	"github.com/basitGL/books_club/services"
 	"github.com/basitGL/books_club/utils"
 	"github.com/gorilla/mux"
 )
+
+const uploadDir = "uploads"
 
 type Router struct {
 	router      *mux.Router
@@ -20,6 +24,11 @@ func NewRouter(authService *services.AuthService) *Router {
 }
 
 func (r *Router) Init() *mux.Router {
+
+	print(http.Dir(uploadDir))
+
+	r.router.Handle("/uploads/", http.StripPrefix("/uploads", http.FileServer(http.Dir(uploadDir))))
+
 	// Create controllers with auth service
 	userController := controllers.NewUserController(r.authService)
 	bookController := controllers.NewBookController(r.authService)

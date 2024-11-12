@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/basitGL/books_club/services"
 	"github.com/golang-jwt/jwt"
@@ -24,8 +25,9 @@ func UploadFileToServer(file multipart.File, handler *multipart.FileHeader, r *h
 		return "", fmt.Errorf("failed to create upload directory: %w", err)
 	}
 
-	folderPath := filepath.Join(uploadDir, handler.Filename)
-	destFile, err := os.Create(folderPath)
+	filename := generateFilename(handler.Filename)
+
+	destFile, err := os.Create(filepath.Join(uploadDir, filename))
 	if err != nil {
 		return "", fmt.Errorf("failed to create file on server: %w", err)
 	}
@@ -35,8 +37,15 @@ func UploadFileToServer(file multipart.File, handler *multipart.FileHeader, r *h
 		return "", fmt.Errorf("failed to save file: %w", err)
 	}
 
-	filePath := filepath.Join(r.Host, folderPath)
-	return filePath, nil
+	imageURL := fmt.Sprintf("http://%s/uploads/%s", r.Host, filename)
+	return imageURL, nil
+}
+
+func generateFilename(originalName string) string {
+	ext := filepath.Ext(originalName)
+	nameWithoutExt := strings.TrimSuffix(originalName, ext)
+	timestamp := time.Now().UnixNano()
+	return fmt.Sprintf("%s_%d%s", nameWithoutExt, timestamp, ext)
 }
 
 // middleware for setting content-type
